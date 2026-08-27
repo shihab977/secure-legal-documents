@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCrypto } from '../context/CryptoContext';
 import EncryptedDocumentUploader from '../components/EncryptedDocumentUploader';
 import DocumentList from '../components/DocumentList';
-import { Briefcase, Key, Users, ShieldCheck, LogOut, CheckCircle2, Plus, FolderPlus, FileText, AlertCircle, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Briefcase, Key, Users, ShieldCheck, LogOut, CheckCircle2, Plus, FolderPlus, FileText, AlertCircle, X, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
@@ -17,6 +17,9 @@ export default function LawyerDashboard() {
   const [loadingCases, setLoadingCases] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -28,7 +31,20 @@ export default function LawyerDashboard() {
   useEffect(() => {
     fetchClients();
     fetchCases();
+    fetchNotifications();
   }, []);
+
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const res = await axios.get(`${API_URL}/audit-logs/notifications`);
+      setNotifications(res.data.notifications || []);
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
   const fetchClients = async () => {
     try {
@@ -211,27 +227,73 @@ export default function LawyerDashboard() {
         </div>
 
 
-        {/* Registered Clients Sidebar */}
-        <div className="glass-card" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Users size={18} color="#4facfe" /> Registered Clients
-          </h3>
+        {/* Sidebar Section */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Document Access Notifications Card */}
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Bell size={18} color="#00f2fe" /> Document Access Notifications
+            </h3>
 
-          {clients.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No registered clients found. Have client register first.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {clients.map(client => (
-                <div key={client._id} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{client.name}</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{client.email}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#00f2fe', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Key size={12} /> RSA-2048 Public Key Ready
+            {loadingNotifications ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading access notifications...</div>
+            ) : notifications.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No client access notifications recorded yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '350px', overflowY: 'auto' }}>
+                {notifications.map(notif => (
+                  <div key={notif.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: notif.action === 'VIEWED' ? 'rgba(0, 242, 254, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                        color: notif.action === 'VIEWED' ? '#00f2fe' : '#10b981'
+                      }}>
+                        {notif.action}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{notif.clientName}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{notif.clientEmail}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#fff', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <FileText size={12} color="#00f2fe" /> {notif.documentFilename}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Case ID: {notif.caseId}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Registered Clients Sidebar */}
+          <div className="glass-card" style={{ padding: '24px' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={18} color="#4facfe" /> Registered Clients
+            </h3>
+
+            {clients.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No registered clients found. Have client register first.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {clients.map(client => (
+                  <div key={client._id} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{client.name}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{client.email}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#00f2fe', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Key size={12} /> RSA-2048 Public Key Ready
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

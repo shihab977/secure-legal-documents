@@ -59,6 +59,7 @@ export default function DocumentList({ caseId, refreshTrigger }) {
       // 2. Fetch raw ciphertext binary ArrayBuffer from MinIO via backend
       setDecryptionStep('Retrieving encrypted document ciphertext payload...');
       const ciphertextRes = await axios.get(`${API_URL}/documents/${docId}/ciphertext`, {
+        params: { action: mode },
         responseType: 'arraybuffer'
       });
       const ciphertextArrayBuffer = ciphertextRes.data;

@@ -198,15 +198,28 @@ const getDocumentCiphertext = async (req, res) => {
     const isClient = targetCase.clientId.toString() === req.user._id.toString();
 
     if (!isLawyer && !isClient) {
+      await logAuditEvent({
+        action: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+        performedBy: req.user._id,
+        targetResource: 'Document',
+        targetId: doc._id,
+        details: `User ${req.user.email} attempted unauthorized access to document '${doc.originalFilename}'`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        status: 'FAILURE'
+      });
       return res.status(403).json({ error: 'Access denied. You are not authorized to download this ciphertext.' });
     }
 
+    const isViewAction = req.query.action === 'view' || req.query.action === 'VIEWED';
+    const auditAction = isViewAction ? 'DOC_VIEWED' : 'DOC_DOWNLOADED';
+
     await logAuditEvent({
-      action: 'DOC_DOWNLOADED',
+      action: auditAction,
       performedBy: req.user._id,
       targetResource: 'Document',
       targetId: doc._id,
-      details: `Ciphertext for '${doc.originalFilename}' retrieved by ${req.user.role} ${req.user.email}`,
+      details: `Ciphertext for '${doc.originalFilename}' ${isViewAction ? 'viewed' : 'downloaded'} by ${req.user.role} ${req.user.email}`,
       ipAddress: req.ip,
       userAgent: req.get('user-agent')
     });

@@ -13,6 +13,7 @@ const auditLogSchema = new mongoose.Schema(
         'CASE_ACCESSED',
         'DOC_UPLOADED',
         'DOC_DOWNLOADED',
+        'DOC_VIEWED',
         'UNAUTHORIZED_ACCESS_ATTEMPT'
       ],
       index: true
@@ -30,7 +31,8 @@ const auditLogSchema = new mongoose.Schema(
     },
     targetId: {
       type: mongoose.Schema.Types.ObjectId,
-      index: true
+      index: true,
+      refPath: 'targetResource'
     },
     details: {
       type: String,
