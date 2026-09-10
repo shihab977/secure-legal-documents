@@ -231,12 +231,59 @@ describe('Document Access Notifications Test Suite', () => {
     expect(lastNotif.clientEmail).not.toEqual('fake@hacker.com');
   });
 
-  test('5. Non-lawyer role (client) cannot access lawyer notifications endpoint (HTTP 403)', async () => {
-    const res = await request(app)
+  test('5. Lawyer VIEWING document creates a VIEWED notification for assigned client (Client 1)', async () => {
+    // Lawyer views document
+    const viewRes = await request(app)
+      .get(`/api/v1/documents/${uploadedDocId}/ciphertext?action=view`)
+      .set('Authorization', `Bearer ${lawyerToken}`);
+
+    expect(viewRes.statusCode).toEqual(200);
+
+    // Client 1 checks access notifications
+    const notifRes = await request(app)
       .get('/api/v1/audit-logs/notifications')
       .set('Authorization', `Bearer ${client1Token}`);
 
-    expect(res.statusCode).toEqual(403);
-    expect(res.body.error).toContain('Lawyer role required');
+    expect(notifRes.statusCode).toEqual(200);
+    expect(notifRes.body).toHaveProperty('notifications');
+
+    const notification = notifRes.body.notifications.find(n => n.action === 'VIEWED');
+    expect(notification).toBeDefined();
+    expect(notification.lawyerName).toEqual('Sarah Jenkins');
+    expect(notification.lawyerEmail).toEqual('s.jenkins@legalpartners.com');
+    expect(notification.documentFilename).toEqual('financial_audit_2026.pdf');
+    expect(notification.action).toEqual('VIEWED');
+    expect(notification).toHaveProperty('timestamp');
+  });
+
+  test('6. Lawyer DOWNLOADING document creates a DOWNLOADED notification for assigned client (Client 1)', async () => {
+    // Lawyer downloads document
+    const downloadRes = await request(app)
+      .get(`/api/v1/documents/${uploadedDocId}/ciphertext?action=download`)
+      .set('Authorization', `Bearer ${lawyerToken}`);
+
+    expect(downloadRes.statusCode).toEqual(200);
+
+    // Client 1 checks access notifications
+    const notifRes = await request(app)
+      .get('/api/v1/audit-logs/notifications')
+      .set('Authorization', `Bearer ${client1Token}`);
+
+    expect(notifRes.statusCode).toEqual(200);
+    const notification = notifRes.body.notifications.find(n => n.action === 'DOWNLOADED');
+    expect(notification).toBeDefined();
+    expect(notification.lawyerName).toEqual('Sarah Jenkins');
+    expect(notification.lawyerEmail).toEqual('s.jenkins@legalpartners.com');
+    expect(notification.documentFilename).toEqual('financial_audit_2026.pdf');
+    expect(notification.action).toEqual('DOWNLOADED');
+  });
+
+  test('7. Unauthorized client (Client 2) CANNOT see notifications belonging to Client 1 or Client 1\'s case', async () => {
+    const notifRes = await request(app)
+      .get('/api/v1/audit-logs/notifications')
+      .set('Authorization', `Bearer ${client2Token}`);
+
+    expect(notifRes.statusCode).toEqual(200);
+    expect(notifRes.body.notifications).toEqual([]);
   });
 });

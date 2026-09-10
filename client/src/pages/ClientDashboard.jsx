@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCrypto } from '../context/CryptoContext';
 import EncryptedDocumentUploader from '../components/EncryptedDocumentUploader';
 import DocumentList from '../components/DocumentList';
-import { User, ShieldCheck, LogOut, CheckCircle2, FileText, Briefcase, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, ShieldCheck, LogOut, CheckCircle2, FileText, Briefcase, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
@@ -16,9 +16,25 @@ export default function ClientDashboard() {
   const [expandedCaseId, setExpandedCaseId] = useState(null);
   const [docRefreshTrigger, setDocRefreshTrigger] = useState(0);
 
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+
   useEffect(() => {
     fetchAssignedCases();
+    fetchNotifications();
   }, []);
+
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const res = await axios.get(`${API_URL}/audit-logs/notifications`);
+      setNotifications(res.data.notifications || []);
+    } catch (err) {
+      console.error('Failed to fetch access notifications', err);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
   const fetchAssignedCases = async () => {
     try {
@@ -36,7 +52,7 @@ export default function ClientDashboard() {
   };
 
   return (
-    <div style={{ maxWidth: '900px', margin: '30px auto', padding: '0 20px' }}>
+    <div style={{ maxWidth: '1000px', margin: '30px auto', padding: '0 20px' }}>
       {/* Header Bar */}
       <header className="glass-card" style={{ padding: '20px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -86,67 +102,116 @@ export default function ClientDashboard() {
         </div>
       </div>
 
-      {/* Assigned Cases List */}
-      <div className="glass-card" style={{ padding: '24px' }}>
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Briefcase size={20} color="#4facfe" /> My Assigned Cases ({cases.length})
-        </h3>
+      {/* Grid Layout: Assigned Cases + Access Notifications Sidebar */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        {/* Assigned Cases List */}
+        <div className="glass-card" style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Briefcase size={20} color="#4facfe" /> My Assigned Cases ({cases.length})
+          </h3>
 
-        {loadingCases ? (
-          <div style={{ padding: '20px', color: 'var(--text-muted)' }}>Loading assigned cases...</div>
-        ) : cases.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-            <FileText size={40} color="#4facfe" style={{ marginBottom: '12px' }} />
-            <p>No legal cases assigned to your account yet.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {cases.map(item => {
-              const isExpanded = expandedCaseId === item._id;
-              return (
-                <div key={item._id} style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', cursor: 'pointer' }} onClick={() => toggleExpand(item._id)}>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', background: 'rgba(79, 172, 254, 0.15)', color: '#4facfe', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                        {item.caseNumber}
-                      </span>
-                      <h4 style={{ fontSize: '1.05rem', marginTop: '6px' }}>{item.title}</h4>
+          {loadingCases ? (
+            <div style={{ padding: '20px', color: 'var(--text-muted)' }}>Loading assigned cases...</div>
+          ) : cases.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+              <FileText size={40} color="#4facfe" style={{ marginBottom: '12px' }} />
+              <p>No legal cases assigned to your account yet.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {cases.map(item => {
+                const isExpanded = expandedCaseId === item._id;
+                return (
+                  <div key={item._id} style={{ padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', cursor: 'pointer' }} onClick={() => toggleExpand(item._id)}>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', background: 'rgba(79, 172, 254, 0.15)', color: '#4facfe', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                          {item.caseNumber}
+                        </span>
+                        <h4 style={{ fontSize: '1.05rem', marginTop: '6px' }}>{item.title}</h4>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '10px', textTransform: 'capitalize' }}>
+                          {item.status}
+                        </span>
+                        {isExpanded ? <ChevronUp size={18} color="#4facfe" /> : <ChevronDown size={18} color="#94a3b8" />}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '10px', textTransform: 'capitalize' }}>
-                        {item.status}
-                      </span>
-                      {isExpanded ? <ChevronUp size={18} color="#4facfe" /> : <ChevronDown size={18} color="#94a3b8" />}
+
+                    {item.description && (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
+                        {item.description}
+                      </p>
+                    )}
+
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '16px', marginBottom: isExpanded ? '16px' : '0' }}>
+                      <span>Assigned Attorney: <strong style={{ color: '#fff' }}>{item.lawyerId?.name}</strong> ({item.lawyerId?.email})</span>
                     </div>
+
+                    {isExpanded && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+                        <EncryptedDocumentUploader
+                          caseData={item}
+                          onUploadSuccess={() => setDocRefreshTrigger(prev => prev + 1)}
+                        />
+                        <DocumentList
+                          caseId={item._id}
+                          refreshTrigger={docRefreshTrigger}
+                        />
+                      </div>
+                    )}
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-                  {item.description && (
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '10px' }}>
-                      {item.description}
-                    </p>
-                  )}
+        {/* Document Access Notifications Section */}
+        <div className="glass-card" style={{ padding: '24px', height: 'fit-content' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Bell size={18} color="#4facfe" /> Document Access Notifications
+          </h3>
 
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '16px', marginBottom: isExpanded ? '16px' : '0' }}>
-                    <span>Assigned Attorney: <strong style={{ color: '#fff' }}>{item.lawyerId?.name}</strong> ({item.lawyerId?.email})</span>
+          {loadingNotifications ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading access notifications...</div>
+          ) : notifications.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No lawyer access notifications recorded yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '450px', overflowY: 'auto' }}>
+              {notifications.map(notif => (
+                <div key={notif.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      background: notif.action === 'VIEWED' ? 'rgba(79, 172, 254, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                      color: notif.action === 'VIEWED' ? '#4facfe' : '#10b981'
+                    }}>
+                      {notif.action}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-
-                  {isExpanded && (
-                    <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-                      <EncryptedDocumentUploader
-                        caseData={item}
-                        onUploadSuccess={() => setDocRefreshTrigger(prev => prev + 1)}
-                      />
-                      <DocumentList
-                        caseId={item._id}
-                        refreshTrigger={docRefreshTrigger}
-                      />
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
+                    🔔 {notif.documentFilename} was {notif.action.toLowerCase()} by your lawyer
+                  </div>
+                  {notif.lawyerName && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>
+                      Lawyer: {notif.lawyerName} ({notif.lawyerEmail})
                     </div>
                   )}
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Case ID: {notif.caseId}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
