@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useCrypto } from '../context/CryptoContext';
+import EncryptedDocumentUploader from '../components/EncryptedDocumentUploader';
 import DocumentList from '../components/DocumentList';
 import { User, ShieldCheck, LogOut, CheckCircle2, FileText, Briefcase, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -13,6 +14,7 @@ export default function ClientDashboard() {
   const [cases, setCases] = useState([]);
   const [loadingCases, setLoadingCases] = useState(true);
   const [expandedCaseId, setExpandedCaseId] = useState(null);
+  const [docRefreshTrigger, setDocRefreshTrigger] = useState(0);
 
   useEffect(() => {
     fetchAssignedCases();
@@ -130,7 +132,14 @@ export default function ClientDashboard() {
 
                   {isExpanded && (
                     <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-                      <DocumentList caseId={item._id} />
+                      <EncryptedDocumentUploader
+                        caseData={item}
+                        onUploadSuccess={() => setDocRefreshTrigger(prev => prev + 1)}
+                      />
+                      <DocumentList
+                        caseId={item._id}
+                        refreshTrigger={docRefreshTrigger}
+                      />
                     </div>
                   )}
                 </div>
